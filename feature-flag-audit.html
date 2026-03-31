@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Feature Flag Audit — Deactivated Features</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --red: #f87171;
+    --orange: #fb923c;
+    --yellow: #facc15;
+    --pink: #f472b6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2.5rem 2rem;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  header .subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  header .date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    opacity: 0.7;
+  }
+
+  /* Stats bar */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+  }
+
+  .stat-card .number {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .stat-card .label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+  }
+
+  .stat-card.blue .number { color: var(--accent); }
+  .stat-card.purple .number { color: var(--accent2); }
+  .stat-card.green .number { color: var(--green); }
+  .stat-card.orange .number { color: var(--orange); }
+
+  /* Overview */
+  .overview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .overview h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  .overview p {
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .flag-system-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .flag-system-list li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .flag-system-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .flag-system-list li:nth-child(1)::before { background: var(--accent); }
+  .flag-system-list li:nth-child(2)::before { background: var(--accent2); }
+  .flag-system-list li:nth-child(3)::before { background: var(--orange); }
+
+  .flag-system-list strong { color: var(--text); }
+
+  /* Sections */
+  .section {
+    margin-bottom: 2.5rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-header .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .badge-blue { background: rgba(56,189,248,0.15); color: var(--accent); }
+  .badge-purple { background: rgba(129,140,248,0.15); color: var(--accent2); }
+  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-pink { background: rgba(244,114,182,0.15); color: var(--pink); }
+  .badge-yellow { background: rgba(250,204,21,0.15); color: var(--yellow); }
+
+  /* Subsection */
+  .subsection {
+    margin-bottom: 1.5rem;
+  }
+
+  .subsection h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 0.7rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tbody tr:hover { background: rgba(56,189,248,0.04); }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.82rem;
+    background: rgba(56,189,248,0.1);
+    color: var(--accent);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.55em;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .tag-off { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-on { background: rgba(74,222,128,0.15); color: var(--green); }
+  .tag-killswitch { background: rgba(250,204,21,0.15); color: var(--yellow); }
+  .tag-internal { background: rgba(129,140,248,0.15); color: var(--accent2); }
+
+  /* Takeaways */
+  .takeaways {
+    background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(129,140,248,0.08));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+  }
+
+  .takeaways h2 {
+    font-size: 1.15rem;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .takeaway-item {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .takeaway-item:last-child { margin-bottom: 0; }
+
+  .takeaway-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(56,189,248,0.15);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-top: 0.1rem;
+  }
+
+  .takeaway-item strong { color: var(--text); }
+  .takeaway-item span { color: var(--text-muted); }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .toc h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding: 0;
+    columns: 2;
+    column-gap: 2rem;
+  }
+
+  .toc li {
+    counter-increment: toc;
+    padding: 0.3rem 0;
+  }
+
+  .toc li::before {
+    content: counter(toc) ".";
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .toc a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.15s;
+  }
+
+  .toc a:hover { color: var(--accent); }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 1rem; }
+    .toc ol { columns: 1; }
+    header h1 { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Claude Code Feature Flag Audit</h1>
+  <div class="subtitle">Deactivated Features &amp; Hidden Functionality</div>
+  <div class="date">Generated March 31, 2026 &mdash; Repository: claude-code (main branch)</div>
+</header>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat-card blue">
+    <div class="number">~120</div>
+    <div class="label">Build-Time Flags</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="number">62</div>
+    <div class="label">GrowthBook Flags</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="number">8</div>
+    <div class="label">Legacy Statsig Gates</div>
+  </div>
+  <div class="stat-card green">
+    <div class="number">358</div>
+    <div class="label">Files Using Flags</div>
+  </div>
+</div>
+
+<!-- Overview -->
+<div class="overview">
+  <h2>How Feature Flags Work in Claude Code</h2>
+  <p>Claude Code uses three layered feature flag systems to control which functionality ships to users:</p>
+  <ul class="flag-system-list">
+    <li><strong>Bun build-time flags</strong> &mdash; <code>feature('FLAG')</code> calls evaluated at compile time. Disabled features are completely eliminated from the shipped bundle. Config lives in Anthropic's private build infrastructure.</li>
+    <li><strong>GrowthBook remote flags</strong> &mdash; <code>tengu_*</code> flags fetched from Anthropic's GrowthBook server. Can be toggled per-user or per-segment without a code deploy. Cached to disk with in-memory fallback.</li>
+    <li><strong>Statsig gates (legacy)</strong> &mdash; Boolean gates being migrated to GrowthBook. Default to <code>false</code> unless the server says otherwise.</li>
+  </ul>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#build-time">Major Hidden Features (Build-Time)</a></li>
+    <li><a href="#computer-use">Computer Use &amp; UI Gates</a></li>
+    <li><a href="#memory">Memory &amp; Context Gates</a></li>
+    <li><a href="#agents">Agent &amp; Tool Gates</a></li>
+    <li><a href="#api">API &amp; Protocol Gates</a></li>
+    <li><a href="#remote">Remote &amp; Bridge Gates</a></li>
+    <li><a href="#chrome">Chrome &amp; Desktop Integration</a></li>
+    <li><a href="#settings">Settings &amp; UX Gates</a></li>
+    <li><a href="#telemetry">Telemetry &amp; Survey Gates</a></li>
+    <li><a href="#statsig">Legacy Statsig Gates</a></li>
+    <li><a href="#always-disabled">Always-Disabled Tool</a></li>
+    <li><a href="#internal">Hidden Internal-Only Commands</a></li>
+    <li><a href="#takeaways">Key Takeaways</a></li>
+  </ol>
+</div>
+
+<!-- Section 1: Build-time -->
+<div class="section" id="build-time">
+  <div class="section-header">
+    <span class="badge badge-blue">1</span>
+    <h2>Major Hidden Features (Build-Time Flags)</h2>
+  </div>
+  <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+    These features exist in source but are eliminated at compile time via <code>feature('FLAG')</code>.
+    The build config is in Anthropic's private infrastructure &mdash; these flags gate entire subsystems.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Flag</th><th>Feature</th><th>Description</th><th>Source</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>VOICE_MODE</code></td>
+          <td><strong>Voice Input</strong></td>
+          <td>Full speech-to-text voice streaming system. Requires OAuth + GrowthBook killswitch. Includes voice streaming, key terms, and voice-enabled commands.</td>
+          <td><code>src/voice/</code></td>
+        </tr>
+        <tr>
+          <td><code>COORDINATOR_MODE</code></td>
+          <td><strong>Multi-Agent Coordinator</strong></td>
+          <td>Orchestrates teams of worker agents for parallel complex tasks. Includes scratchpad filesystem, coordinator system prompt, and worker delegation protocol.</td>
+          <td><code>src/coordinator/</code></td>
+        </tr>
+        <tr>
+          <td><code>PROACTIVE</code></td>
+          <td><strong>Proactive Agent Mode</strong></td>
+          <td>Autonomous background work without explicit user prompting.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>KAIROS</code></td>
+          <td><strong>Assistant / Notification System</strong></td>
+          <td>Full event system with sub-flags: <code>KAIROS_BRIEF</code>, <code>KAIROS_CHANNELS</code>, <code>KAIROS_DREAM</code>, <code>KAIROS_GITHUB_WEBHOOKS</code>, <code>KAIROS_PUSH_NOTIFICATION</code>.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>WEB_BROWSER_TOOL</code></td>
+          <td><strong>Web Browser Tool</strong></td>
+          <td>Direct web browsing capability beyond the existing fetch and search tools.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>ULTRAPLAN</code></td>
+          <td><strong>Ultra Planning</strong></td>
+          <td>Enhanced planning mode with configurable model (defaults to Opus 4.6 via <code>tengu_ultraplan_model</code>).</td>
+          <td><code>src/commands/ultraplan.tsx</code></td>
+        </tr>
+        <tr>
+          <td><code>ULTRATHINK</code></td>
+          <td><strong>Ultra Thinking</strong></td>
+          <td>Extended deep reasoning mode beyond standard thinking.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>VERIFICATION_AGENT</code></td>
+          <td><strong>Verification Agent</strong></td>
+          <td>Dedicated built-in agent for verifying work. Also gated by <code>tengu_hive_evidence</code> GrowthBook flag.</td>
+          <td><code>src/tools/AgentTool/builtInAgents.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>TRANSCRIPT_CLASSIFIER</code></td>
+          <td><strong>Auto Mode</strong></td>
+          <td>Classifies user transcripts to enable automatic task execution without manual confirmation.</td>
+          <td><code>src/utils/betas.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>BUDDY</code></td>
+          <td><strong>Companion Sprite</strong></td>
+          <td>UI companion element / notification sprite.</td>
+          <td><code>src/buddy/</code></td>
+        </tr>
+        <tr>
+          <td><code>DAEMON</code></td>
+          <td><strong>Daemon Mode</strong></td>
+          <td>Background daemon process for persistent operation.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>EXTRACT_MEMORIES</code></td>
+          <td><strong>Memory Extraction</strong></td>
+          <td>Automatic extraction of memories from conversations for future recall.</td>
+          <td><code>src/services/extractMemories/</code></td>
+        </tr>
+        <tr>
+          <td><code>AWAY_SUMMARY</code></td>
+          <td><strong>Away Summaries</strong></td>
+          <td>Auto-generated summaries when the user is away from the session.</td>
+          <td><code>src/hooks/useAwaySummary.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>TEAMMEM</code></td>
+          <td><strong>Team Memory</strong></td>
+          <td>Shared team memory directory system for multi-user collaboration.</td>
+          <td><code>src/memdir/</code></td>
+        </tr>
+        <tr>
+          <td><code>WORKFLOW_SCRIPTS</code></td>
+          <td><strong>Workflow Automation</strong></td>
+          <td>Scripted workflow execution and automation.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>TEMPLATES</code></td>
+          <td><strong>Templates</strong></td>
+          <td>Template system for projects and scaffolding.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>HISTORY_SNIP</code></td>
+          <td><strong>History Snipping</strong></td>
+          <td>Conversation history snippet feature.</td>
+          <td><code>src/query.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>UDS_INBOX</code></td>
+          <td><strong>UDS Messaging</strong></td>
+          <td>Unix Domain Socket peer-to-peer messaging between processes.</td>
+          <td><code>src/utils/udsMessaging.js</code></td>
+        </tr>
+        <tr>
+          <td><code>CONNECTOR_TEXT</code></td>
+          <td><strong>Connector Text Summarization</strong></td>
+          <td>Server-side text summarization (anti-distillation measure).</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>CONTEXT_COLLAPSE</code></td>
+          <td><strong>Context Collapse</strong></td>
+          <td>Intelligent context compression and collapse.</td>
+          <td><code>src/services/contextCollapse/</code></td>
+        </tr>
+        <tr>
+          <td><code>TOKEN_BUDGET</code></td>
+          <td><strong>Token Budgets</strong></td>
+          <td>Token budget tracking per task.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>PERFETTO_TRACING</code></td>
+          <td><strong>Performance Tracing</strong></td>
+          <td>Perfetto-format performance traces for profiling.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>LODESTONE</code></td>
+          <td><strong>Deep Link Protocol</strong></td>
+          <td>Deep link protocol registration. Also gated by <code>tengu_lodestone_enabled</code>.</td>
+          <td><code>src/utils/deepLink/</code></td>
+        </tr>
+        <tr>
+          <td><code>TORCH</code></td>
+          <td><strong>Torch</strong></td>
+          <td>Internal codename &mdash; purpose unknown.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>MCP_SKILLS</code></td>
+          <td><strong>MCP Skills</strong></td>
+          <td>Skills delivered via MCP (Model Context Protocol) servers.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>SSH_REMOTE</code></td>
+          <td><strong>SSH Remote</strong></td>
+          <td>SSH-based remote session connectivity.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>BG_SESSIONS</code></td>
+          <td><strong>Background Sessions</strong></td>
+          <td>Background session management.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>EXPERIMENTAL_SKILL_SEARCH</code></td>
+          <td><strong>Skill Search</strong></td>
+          <td>Search across available skills.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>AGENT_MEMORY_SNAPSHOT</code></td>
+          <td><strong>Agent Memory Snapshots</strong></td>
+          <td>Snapshot agent state to persistent memory.</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>CCR_AUTO_CONNECT</code></td>
+          <td><strong>CCR Auto-Connect</strong></td>
+          <td>Automatic Claude Code Remote session connection.</td>
+          <td>&mdash;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 2: Computer Use & UI -->
+<div class="section" id="computer-use">
+  <div class="section-header">
+    <span class="badge badge-purple">2</span>
+    <h2>Computer Use &amp; UI Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_malort_pedway</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Computer Use (Chicago)</strong> &mdash; full screen control, mouse, keyboard automation</td>
+          <td>Max/Pro subscription required. Dynamic config with sub-gates for pixel validation, clipboard, mouse animation.</td>
+        </tr>
+        <tr>
+          <td><code>tengu_terminal_panel</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Terminal panel keybindings and UI</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>tengu_terminal_sidebar</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Terminal sidebar tab in REPL screen</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>tengu_destructive_command_warning</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Warnings before destructive bash/PowerShell commands</td>
+          <td>Checked in both BashPermissionRequest and PowerShellPermissionRequest</td>
+        </tr>
+        <tr>
+          <td><code>tengu_desktop_upsell</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Desktop app upsell dialogs and shortcut tips</td>
+          <td>Dynamic config: <code>{enable_shortcut_tip: false, enable_startup_dialog: false}</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_willow_mode</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Willow mode &mdash; purpose unknown</td>
+          <td>String flag defaulting to <code>'off'</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 3: Memory & Context -->
+<div class="section" id="memory">
+  <div class="section-header">
+    <span class="badge badge-green">3</span>
+    <h2>Memory &amp; Context Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_herring_clock</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Team memory</strong> directory feature</td>
+          <td><code>src/memdir/teamMemPaths.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_coral_fern</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>"Searching past context" memory section</td>
+          <td><code>src/memdir/memdir.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_passport_quail</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Memory extraction mode activation</td>
+          <td><code>src/memdir/paths.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_slate_thimble</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Extract mode in non-interactive sessions</td>
+          <td><code>src/memdir/paths.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_session_memory</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Session-level memory storage</td>
+          <td><code>src/services/SessionMemory/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_cobalt_raccoon</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Reactive-only session memory compaction</td>
+          <td><code>src/services/compact/autoCompact.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_moth_copse</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Skip project-level memory indexing</td>
+          <td><code>src/utils/attachments.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_bramble_lintel</code></td>
+          <td><span class="tag tag-off">null</span></td>
+          <td>Turns threshold for memory extraction</td>
+          <td><code>src/services/extractMemories/</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 4: Agent & Tools -->
+<div class="section" id="agents">
+  <div class="section-header">
+    <span class="badge badge-orange">4</span>
+    <h2>Agent &amp; Tool Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_hive_evidence</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Verification agent</strong> &mdash; in built-in agents, task updates, and todo writes</td>
+          <td><code>src/tools/AgentTool/builtInAgents.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_auto_background_agents</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Auto-launch background agents</td>
+          <td><code>src/tools/AgentTool/AgentTool.tsx</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_surreal_dali</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Schedule remote agents</strong> skill + RemoteTriggerTool</td>
+          <td><code>src/skills/bundled/scheduleRemoteAgents.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_glacier_2xr</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Tool search optimization</td>
+          <td><code>src/tools/ToolSearchTool/prompt.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_quartz_lantern</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>FileEdit / FileWrite tool enhancement</td>
+          <td><code>src/tools/FileEditTool/</code>, <code>src/tools/FileWriteTool/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_agent_list_attach</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Agent list attachment in prompts</td>
+          <td><code>src/tools/AgentTool/prompt.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 5: API & Protocol -->
+<div class="section" id="api">
+  <div class="section-header">
+    <span class="badge badge-red">5</span>
+    <h2>API &amp; Protocol Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_amber_json_tools</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Token-efficient JSON tools</strong> format</td>
+          <td>Mutually exclusive with strict tools. Only for models supporting structured outputs.</td>
+        </tr>
+        <tr>
+          <td><code>tengu_slate_prism</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Connector text summarization beta header</td>
+          <td>&mdash;</td>
+        </tr>
+        <tr>
+          <td><code>tengu_fgts</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Structured output feature</td>
+          <td><code>src/utils/api.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_otk_slot_v1</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Max tokens cap validation on Bedrock/Vertex</td>
+          <td><code>src/services/api/claude.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_basalt_3kr</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>MCP instructions delta feature</td>
+          <td><code>src/utils/mcpInstructionsDelta.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 6: Remote & Bridge -->
+<div class="section" id="remote">
+  <div class="section-header">
+    <span class="badge badge-pink">6</span>
+    <h2>Remote &amp; Bridge Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_remote_backend</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Remote TUI backend</strong> mode</td>
+          <td><code>src/main.tsx</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_ccr_bridge</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>CCR bridge connectivity for Claude AI subscribers</td>
+          <td><code>src/bridge/bridgeEnabled.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_ccr_mirror</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>CCR mirror mode</td>
+          <td><code>src/bridge/bridgeEnabled.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_bridge_repl_v2</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Env-less bridge REPL v2 for daemon/print operations</td>
+          <td><code>src/bridge/bridgeEnabled.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_bridge_system_init</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Bridge system initialization</td>
+          <td><code>src/hooks/useReplBridge.tsx</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_cobalt_harbor</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>CCR auto-connect default behavior</td>
+          <td><code>src/bridge/bridgeEnabled.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_cobalt_lantern</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Web-based GitHub auth for remote setup</td>
+          <td><code>src/commands/remote-setup/</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 7: Chrome & Desktop -->
+<div class="section" id="chrome">
+  <div class="section-header">
+    <span class="badge badge-yellow">7</span>
+    <h2>Chrome &amp; Desktop Integration</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_copper_bridge</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Claude-in-Chrome MCP server</td>
+          <td><code>src/utils/claudeInChrome/mcpServer.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_chrome_auto_enable</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Chrome extension auto-enable</td>
+          <td><code>src/utils/claudeInChrome/setup.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_lodestone_enabled</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Deep link protocol registration</td>
+          <td><code>src/utils/deepLink/registerProtocol.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 8: Settings & UX -->
+<div class="section" id="settings">
+  <div class="section-header">
+    <span class="badge badge-blue">8</span>
+    <h2>Settings &amp; UX Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_chomp_inflection</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>Prompt suggestions</strong> feature</td>
+          <td><code>src/services/PromptSuggestion/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_strap_foyer</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Settings sync download</td>
+          <td><code>src/services/settingsSync/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_copper_panda</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Skill improvement tracking</td>
+          <td><code>src/utils/hooks/skillImprovement.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_lapis_finch</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Plugin hint recommendations</td>
+          <td><code>src/utils/plugins/hintRecommendation.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_immediate_model_command</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Immediate model command execution</td>
+          <td><code>src/utils/immediateCommand.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_marble_sandcastle</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Fast mode stallout reason messaging</td>
+          <td><code>src/utils/fastMode.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_pebble_leaf_prune</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Session storage pruning</td>
+          <td><code>src/utils/sessionStorage.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_harbor</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td><strong>MCP channels</strong> master on/off switch</td>
+          <td><code>src/services/mcp/channelAllowlist.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_harbor_permissions</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Channel-specific permission granularity</td>
+          <td><code>src/services/mcp/channelPermissions.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_sessions_elevated_auth_enforcement</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Trusted device session elevation enforcement</td>
+          <td><code>src/bridge/trustedDevice.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 9: Telemetry & Surveys -->
+<div class="section" id="telemetry">
+  <div class="section-header">
+    <span class="badge badge-purple">9</span>
+    <h2>Telemetry &amp; Survey Gates</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>GrowthBook Flag</th><th>Default</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_trace_lantern</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Beta session tracing telemetry</td>
+          <td><code>src/utils/telemetry/betaSessionTracing.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>enhanced_telemetry_beta</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Enhanced telemetry collection</td>
+          <td><code>src/utils/telemetry/sessionTracing.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_kairos_brief</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Kairos brief spinner and message layout</td>
+          <td><code>src/components/Spinner.tsx</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_memory_survey</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Memory feedback survey</td>
+          <td><code>src/components/FeedbackSurvey/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_miraculo_the_bard</code></td>
+          <td><span class="tag tag-off">OFF</span></td>
+          <td>Fast mode status prefetch killswitch</td>
+          <td><code>src/main.tsx</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 10: Legacy Statsig -->
+<div class="section" id="statsig">
+  <div class="section-header">
+    <span class="badge badge-orange">10</span>
+    <h2>Legacy Statsig Gates (All Default FALSE)</h2>
+  </div>
+  <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+    These use <code>checkStatsigFeatureGate_CACHED_MAY_BE_STALE()</code> and are being migrated to GrowthBook.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Gate</th><th>What It Gates</th><th>Source File</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>tengu_thinkback</code></td>
+          <td>Year-in-review <code>/thinkback</code> command</td>
+          <td><code>src/commands/thinkback/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_tool_pear</code></td>
+          <td>Strict tools JSON schema mode</td>
+          <td><code>src/utils/api.ts</code>, <code>src/utils/betas.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_chair_sermon</code></td>
+          <td>Message smooshing &mdash; attachment &amp; tool result optimization</td>
+          <td><code>src/utils/messages.ts</code> (5 call sites)</td>
+        </tr>
+        <tr>
+          <td><code>tengu_post_compact_survey</code></td>
+          <td>Post-compaction feedback survey</td>
+          <td><code>src/components/FeedbackSurvey/</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_disable_bypass_permissions_mode</code></td>
+          <td>Disable bypass-permissions mode</td>
+          <td><code>src/utils/permissions/permissionSetup.ts</code> (3 call sites)</td>
+        </tr>
+        <tr>
+          <td><code>tengu_scratch</code></td>
+          <td><strong>Scratchpad</strong> filesystem for coordinator workers</td>
+          <td><code>src/coordinator/coordinatorMode.ts</code>, <code>src/utils/permissions/filesystem.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_streaming_tool_execution2</code></td>
+          <td>Streaming tool execution in query pipeline</td>
+          <td><code>src/query/config.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_vscode_review_upsell</code></td>
+          <td>VS Code review upsell prompt</td>
+          <td><code>src/services/mcp/vscodeSdkMcp.ts</code></td>
+        </tr>
+        <tr>
+          <td><code>tengu_vscode_onboarding</code></td>
+          <td>VS Code onboarding flow</td>
+          <td><code>src/services/mcp/vscodeSdkMcp.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 11: Always-Disabled Tool -->
+<div class="section" id="always-disabled">
+  <div class="section-header">
+    <span class="badge badge-red">11</span>
+    <h2>Always-Disabled Tool</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>File</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>SyntheticOutputTool</code></td>
+          <td><code>src/tools/SyntheticOutputTool/SyntheticOutputTool.ts:30</code></td>
+          <td><code>isEnabled()</code> returns <code>false</code> unconditionally. Used only internally by coordinator mode workers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 12: Internal Commands -->
+<div class="section" id="internal">
+  <div class="section-header">
+    <span class="badge badge-purple">12</span>
+    <h2>Hidden Internal-Only Commands</h2>
+  </div>
+  <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+    25+ commands in <code>src/commands.ts:225&ndash;254</code> are completely hidden from external users
+    (restricted to <code>USER_TYPE === 'ant'</code>):
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Category</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>debugToolCall</code></td><td><span class="tag tag-internal">Debugging</span></td></tr>
+        <tr><td><code>antTrace</code></td><td><span class="tag tag-internal">Debugging</span></td></tr>
+        <tr><td><code>perfIssue</code></td><td><span class="tag tag-internal">Debugging</span></td></tr>
+        <tr><td><code>ctx_viz</code></td><td><span class="tag tag-internal">Debugging</span></td></tr>
+        <tr><td><code>heapdump</code></td><td><span class="tag tag-internal">Debugging</span></td></tr>
+        <tr><td><code>mockLimits</code></td><td><span class="tag tag-internal">Development</span></td></tr>
+        <tr><td><code>breakCache</code></td><td><span class="tag tag-internal">Development</span></td></tr>
+        <tr><td><code>commit</code></td><td><span class="tag tag-internal">Git Operations</span></td></tr>
+        <tr><td><code>commitPushPr</code></td><td><span class="tag tag-internal">Git Operations</span></td></tr>
+        <tr><td><code>autofix-pr</code></td><td><span class="tag tag-internal">Git Operations</span></td></tr>
+        <tr><td><code>agentsPlatform</code></td><td><span class="tag tag-internal">Infrastructure</span></td></tr>
+        <tr><td><code>backfill-sessions</code></td><td><span class="tag tag-internal">Infrastructure</span></td></tr>
+        <tr><td><code>share</code></td><td><span class="tag tag-internal">Session Mgmt</span></td></tr>
+        <tr><td><code>teleport</code></td><td><span class="tag tag-internal">Session Mgmt</span></td></tr>
+        <tr><td><code>bughunter</code></td><td><span class="tag tag-internal">QA Tools</span></td></tr>
+        <tr><td><code>good-claude</code></td><td><span class="tag tag-internal">QA Tools</span></td></tr>
+        <tr><td><code>issue</code></td><td><span class="tag tag-internal">QA Tools</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Takeaways -->
+<div class="section" id="takeaways">
+  <div class="takeaways">
+    <h2>Key Takeaways</h2>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">1</span>
+      <span><strong>Largest hidden features:</strong> Voice Mode, Coordinator Mode (multi-agent orchestration), Computer Use (Chicago), the Kairos notification system, Proactive agent mode, and Web Browser Tool are all complete subsystems behind disabled flags.</span>
+    </div>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">2</span>
+      <span><strong>Memory system expansion:</strong> Team memory, session memory, memory extraction, and "searching past context" are all disabled &mdash; pointing to a major upcoming memory overhaul with 7+ related flags.</span>
+    </div>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">3</span>
+      <span><strong>Remote/Bridge expansion:</strong> Seven CCR (Claude Code Remote) flags are disabled, suggesting a significantly richer remote collaboration experience in development.</span>
+    </div>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">4</span>
+      <span><strong>Chrome integration:</strong> Claude-in-Chrome MCP server (<code>tengu_copper_bridge</code>) and auto-enable (<code>tengu_chrome_auto_enable</code>) are both disabled, indicating browser extension integration is in progress.</span>
+    </div>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">5</span>
+      <span><strong>All GrowthBook flags are remotely toggleable</strong> without a code deploy. Anthropic can progressively enable any of these features for targeted user segments, subscriptions, or A/B test groups at any time.</span>
+    </div>
+
+    <div class="takeaway-item">
+      <span class="takeaway-num">6</span>
+      <span><strong>Flag naming convention:</strong> All GrowthBook flags use the <code>tengu_</code> prefix with two-word codenames (e.g., <code>tengu_coral_fern</code>, <code>tengu_marble_fox</code>), deliberately obscuring their purpose from the flag name alone.</span>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Feature Flag Audit &mdash; Claude Code Repository &mdash; March 31, 2026
+</footer>
+
+</div>
+</body>
+</html>
